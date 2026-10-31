@@ -11,10 +11,21 @@ Mande `almoço 32,50` para um bot e a despesa entra na conta certa do usuário, 
 - Escolhe a categoria pelas palavras da descrição e responde com a conta e a categoria usadas.
 - Funciona para vários usuários ao mesmo tempo, sem que um enxergue ou escreva nos dados do outro.
 
-<!-- Quando os arquivos existirem em docs/media/, descomente:
-![Conectando o Telegram](docs/media/conectar.gif)
-![Registrando despesas](docs/media/registrar.gif)
--->
+## Demonstração
+
+> **Simulação com dados fictícios.** Os GIFs abaixo usam a interface real do CIFRO com dados de exemplo, um celular simulado no lugar do Telegram e um diagrama do workflow exportado. Não são gravações do bot em uso. [Como foram gerados](docs/media/src/README.md).
+
+**Conectar o Telegram:** o app gera o link de uso único, a pessoa toca em Iniciar, e o Perfil muda sozinho para Conectado.
+
+![Simulação: conectando o Telegram pelo Perfil do CIFRO](docs/media/conectar.gif)
+
+**Registrar despesas:** duas mensagens viram dois lançamentos, com a conta e a categoria confirmadas pelo bot.
+
+![Simulação: duas despesas enviadas ao bot aparecendo em Lançamentos](docs/media/registrar.gif)
+
+**O caminho de uma mensagem no workflow:** do gatilho até a confirmação, pelos ramos de conexão, gravação e erro.
+
+![Diagrama animado do workflow do n8n](docs/media/workflow.gif)
 
 ## Arquitetura
 
