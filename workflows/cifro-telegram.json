@@ -1,0 +1,393 @@
+{
+  "id": "cifro-telegram",
+  "name": "Cifro Telegram (multiusuário)",
+  "nodes": [
+    {
+      "id": "4d18d2b3-f5d7-4dbd-8fbb-ed9a0e57609b",
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "65ac280f-cbf2-4876-84ef-52332d73ae66",
+      "parameters": {
+        "jsCode": "const msg = $json.message;\nif (msg.chat.type !== 'private') return [];\n\nconst chat_id = msg.chat.id;\nconst text = (msg.text || '').trim();\nconst reply = (message) => [{ json: { kind: 'reply', chat_id, text: message } }];\n\nconst start = text.match(/^\\/start(?:@\\w+)?(?:\\s+(\\S+))?$/);\nif (start) {\n  if (start[1]) return [{ json: { kind: 'link', chat_id, token: start[1] } }];\n  return reply('Para conectar, abra Perfil no Cifro e toque em Conectar Telegram.');\n}\n\nconst m = text.match(/^(.+?)\\s+(\\d+(?:[.,]\\d{1,2})?)$/);\nif (!m) return reply('Não entendi 🤔 Use: descrição valor (ex: almoço 32,50)');\n\nconst valor = parseFloat(m[2].replace(',', '.'));\nreturn [{ json: {\n  kind: 'expense',\n  chat_id,\n  message_id: msg.message_id,\n  descricao: m[1].trim(),\n  valor,\n  amount_cents: Math.round(valor * 100)\n} }];"
+      },
+      "name": "Interpretar mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "id": "a444f707-3031-420b-8be9-b91b7de3bd8e",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "451422ee-8b9f-4a1e-ab8d-ffca8e335169",
+              "leftValue": "={{ $json.kind }}",
+              "rightValue": "link",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "É conexão?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "id": "4ccf236c-1497-4f66-80eb-8fae57ebecb1",
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-PROJECT.supabase.co/rest/v1/rpc/confirm_telegram_link",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_chat_id: $json.chat_id, p_token: $json.token }) }}",
+        "options": {}
+      },
+      "name": "Confirmar conexão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        -240
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "7e80fa58-d5a5-49e4-8f89-4dcb8165e34c",
+      "parameters": {
+        "chatId": "={{ $('Interpretar mensagem').item.json.chat_id }}",
+        "text": "={{ $json.message || 'O Cifro não respondeu. Tente abrir o link de novo.' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Responder conexão",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        -240
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "54025608-3d26-4c35-8475-4cf5226cc168",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "46c4f045-6366-45fb-b963-b1a1059ed2bd",
+              "leftValue": "={{ $json.kind }}",
+              "rightValue": "expense",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "É despesa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        96
+      ]
+    },
+    {
+      "id": "06b2e5d4-f4ee-4aea-8315-5d07fa6f9e4b",
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-PROJECT.supabase.co/rest/v1/rpc/capture_telegram_expense",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_chat_id: $json.chat_id, p_message_id: $json.message_id, p_description: $json.descricao, p_amount_cents: $json.amount_cents }) }}",
+        "options": {}
+      },
+      "name": "Gravar no Cifro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        992,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "69304d30-5c6a-4ad2-86f0-71ea8687295f",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dd465099-3146-4d60-9d18-3fb97f247f71",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Gravou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        -96
+      ]
+    },
+    {
+      "id": "294e1fe5-7bf1-4c06-86d1-576468541759",
+      "parameters": {
+        "chatId": "={{ $('Interpretar mensagem').item.json.chat_id }}",
+        "text": "=✅ Registrado: {{ $('Interpretar mensagem').item.json.descricao }} - R$ {{ $('Interpretar mensagem').item.json.valor.toFixed(2).replace('.', ',') }} em {{ $json.account }} ({{ $json.category }})",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Confirmar no Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1536,
+        -192
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "33d741cb-722b-4311-8093-916894c49854",
+      "parameters": {
+        "chatId": "={{ $('Interpretar mensagem').item.json.chat_id }}",
+        "text": "=⚠️ Não gravei: {{ $json.message || 'o Cifro não respondeu. Tente de novo.' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Avisar falha no Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1536,
+        48
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "2afc833e-e06c-4b4a-8430-5cf18fa995d5",
+      "parameters": {
+        "chatId": "={{ $('Interpretar mensagem').item.json.chat_id }}",
+        "text": "={{ $('Interpretar mensagem').item.json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "name": "Orientar no Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        240
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Interpretar mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpretar mensagem": {
+      "main": [
+        [
+          {
+            "node": "É conexão?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É conexão?": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conexão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "É despesa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar conexão": {
+      "main": [
+        [
+          {
+            "node": "Responder conexão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder conexão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É despesa?": {
+      "main": [
+        [
+          {
+            "node": "Gravar no Cifro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Orientar no Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar no Cifro": {
+      "main": [
+        [
+          {
+            "node": "Gravou?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar falha no Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravou?": {
+      "main": [
+        [
+          {
+            "node": "Confirmar no Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar falha no Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

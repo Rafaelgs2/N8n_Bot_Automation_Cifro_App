@@ -1,0 +1,11 @@
+# Never commit credentials or exports straight from n8n; run them through scripts/sanitize-workflow.cjs first.
+.env
+.env.*
+*.key
+*.token
+*-export.json
+*.log
+node_modules/
+
+# Job-search material (resume bullets, post drafts) is personal and stays out of the public repository.
+career/

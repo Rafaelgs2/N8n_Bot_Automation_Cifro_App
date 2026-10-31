@@ -1,0 +1,25 @@
+# Disposable services for the tests and for checking the workflow. Nothing here touches an existing n8n.
+name: cifro-telegram-automation
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: cifro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d cifro"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  # Optional: `docker compose --profile n8n up -d n8n`, then import workflows/cifro-telegram.json.
+  # Published on 5679 so it never collides with an n8n you already run on 5678.
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    profiles: ["n8n"]
+    ports:
+      - "5679:5678"
