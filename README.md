@@ -2,7 +2,7 @@
 
 Mande `almoço 32,50` para um bot e a despesa entra na conta certa do usuário, com categoria, data e confirmação. É a automação do [CIFRO](https://github.com/Rafaelgs2/CIFRO-APP), um app de finanças pessoais em Next.js e Supabase, e este repositório isola e documenta só ela.
 
-> **In English:** a Telegram → n8n → Supabase automation that records expenses from chat messages. It links each chat to a user with a one-time token, authenticates the bot with a single hashed secret (no service-role key), is idempotent per message, and ships with a 101-scenario SQL test suite that runs with one command. Documentation is in Portuguese.
+> **In English:** a Telegram → n8n → Supabase automation that records expenses from chat messages. It links each chat to a user with a one-time token, authenticates the bot with a single hashed secret (no service-role key), is idempotent per message, and is covered by a 101-scenario SQL test suite. This repository is a showcase of the design, not a template to install. Documentation is in Portuguese.
 
 ## O que ele faz
 
@@ -78,37 +78,17 @@ O token prova a conta logada no app. O chat id vem do próprio Telegram. Só que
 
 O raciocínio por trás de cada decisão, os erros cometidos no caminho e o modelo de ameaças estão no [estudo de caso](docs/estudo-de-caso.md).
 
-## Rodar os testes
+## Como foi testado
 
-Só precisa de Docker.
+A suíte é SQL puro, em [`db/tests`](db/tests), executada sobre um Postgres descartável que emula as partes do Supabase de que o schema depende. Tem **101 cenários em 13 grupos**: autenticação do bot, privilégios, vínculo, captura, categorias, validações, idempotência, isolamento entre usuários, troca de conta, convivência com o app, limpeza e um teste de controle.
 
-```bash
-bash scripts/run-tests.sh
-```
+- As chamadas rodam sob os papéis reais (`anon`, `authenticated`, `supabase_auth_admin`), porque boa parte dos erros que importam aqui é de permissão.
+- Falhas esperadas são afirmadas explicitamente, então qualquer erro não previsto interrompe a execução em vez de passar em silêncio.
+- Para confirmar que a suíte detecta problemas, quebrei a migration de propósito de duas formas (removi uma linha de integridade e tornei a autorização do bot sempre verdadeira) e ela falhou nas duas. Essa verificação foi manual.
 
-O script sobe um Postgres descartável, emula as partes do Supabase de que o schema depende ([`db/stub-supabase.sql`](db/stub-supabase.sql)), aplica as migrations e roda a suíte. Leva cerca de 20 segundos e termina com código diferente de zero se qualquer cenário falhar. Saída esperada, ao final:
+## O workflow
 
-```
-RESULTADO: 101/101 cenários passaram
-```
-
-Os cenários são agrupados por tema: autenticação do bot, privilégios, vínculo, captura, categorias, validações, idempotência, isolamento entre usuários, troca de conta, convivência com o app, limpeza e o teste de controle.
-
-## Usar o workflow no n8n
-
-1. Suba um n8n de teste, sem tocar no seu: `docker compose --profile n8n up -d n8n` (fica em `http://localhost:5679`).
-2. Importe [`workflows/cifro-telegram.json`](workflows/cifro-telegram.json).
-3. Crie a credencial **Telegram** com o token do seu bot, que fica só no n8n.
-4. Crie uma credencial **Custom Auth** e selecione-a nos nós **Confirmar conexão** e **Gravar no Cifro**:
-
-   ```json
-   { "headers": { "apikey": "SUA_PUBLISHABLE_KEY", "x-cifro-bot-secret": "SEGREDO_DO_BOT" } }
-   ```
-
-5. Troque `https://YOUR-PROJECT.supabase.co` pela URL do seu projeto nesses dois nós.
-6. Gere o segredo do bot no SQL Editor do Supabase (`select public.rotate_telegram_bot_secret();`) e publique o workflow.
-
-O workflow publicado aqui não contém ids de credencial, URL de projeto, token nem chat id. O script [`scripts/sanitize-workflow.cjs`](scripts/sanitize-workflow.cjs) recusa gravar qualquer exportação que ainda pareça conter um segredo.
+[`workflows/cifro-telegram.json`](workflows/cifro-telegram.json) é o workflow do n8n exportado, com 11 nós: um ramo para conectar o Telegram, um para gravar a despesa e ramos de erro que sempre acabam em uma resposta ao usuário. Foi publicado **sem ids de credencial, URL de projeto, token nem chat id**; um script de sanitização recusa gravar qualquer exportação que ainda pareça conter um segredo.
 
 ## Estrutura
 
@@ -118,11 +98,11 @@ db/migrations/bot/    as quatro migrations da automação
 db/stub-supabase.sql  papéis, auth.uid() e privilégios padrão do Supabase
 db/tests/             suíte SQL, executada em uma única sessão do psql
 workflows/            workflow do n8n, sanitizado
-scripts/              run-tests.sh e sanitize-workflow.cjs
-docs/                 estudo de caso e roteiro das gravações
+scripts/              utilitários de desenvolvimento: execução dos testes e sanitização do workflow
+docs/                 estudo de caso e mídia do README
 ```
 
-As migrations de `core/` vêm do repositório do CIFRO (commit `0cd86a1`) e existem aqui só para a suíte rodar contra o schema real. As de `bot/` mostram a evolução: a `0004` substitui o desenho da `0001`, e o [estudo de caso](docs/estudo-de-caso.md) explica por quê.
+As migrations de `core/` vêm do repositório do CIFRO (commit `0cd86a1`) e existem aqui para a suíte ser executada contra o schema real. As de `bot/` mostram a evolução: a `0004` substitui o desenho da `0001`, e o [estudo de caso](docs/estudo-de-caso.md) explica por quê.
 
 ## Limitações conhecidas
 
