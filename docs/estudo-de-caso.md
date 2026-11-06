@@ -99,7 +99,7 @@ O Postgres de teste não é o Supabase. Um [stub](../db/stub-supabase.sql) emula
 
 ## Limitações conhecidas
 
-- **Hospedagem.** O n8n roda em um computador pessoal, atrás de um túnel temporário. Em uma ocasião o container parou e o bot ficou fora do ar sem aviso, porque ele não tem política de reinício. Para outras pessoas usarem, precisa de um servidor sempre ligado, endereço fixo e política de reinício.
+- **Hospedagem.** O n8n começou em um computador pessoal, atrás de um túnel temporário, e em uma ocasião o container parou e o bot ficou fora do ar sem aviso. Hoje roda em uma VM da camada gratuita da Oracle (Ubuntu, 1 GB de RAM), com endereço fixo e HTTPS. É um único servidor, sem redundância, e a Oracle recolhe instâncias gratuitas que ficam ociosas por vários dias, o que um n8n quase parado pode provocar. A memória também é apertada para execuções maiores que as deste bot.
 - **Sem limite de envio.** O bot é público: qualquer pessoa pode mandar mensagens, e cada uma gera uma execução no n8n.
 - **Segredo único.** Vale para todos os usuários. Trocar exige atualizar a credencial no n8n.
 - **Categoria por palavra-chave.** Descrições sem palavra conhecida caem em "Outros".
@@ -109,7 +109,7 @@ O Postgres de teste não é o Supabase. Um [stub](../db/stub-supabase.sql) emula
 
 ## Próximos passos
 
-1. Hospedar o n8n com endereço fixo e reinício automático.
+1. Automatizar o backup do volume do n8n e monitorar o bot: hoje a única evidência de queda é a ausência de resposta.
 2. Limitar envios por chat, antes de qualquer divulgação do bot.
 3. Testar o workflow por contrato, com chamadas simuladas do Telegram e do Supabase.
 4. Estudar o WhatsApp. A API oficial cobra pelas respostas do bot depois de uma cota gratuita, então o custo precisa entrar na decisão. O banco já guarda o vínculo por chat, e um novo canal exigiria uma tabela de vínculos por canal e um novo fluxo no n8n.

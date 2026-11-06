@@ -106,7 +106,7 @@ As migrations de `core/` vêm do repositório do CIFRO (commit `0cd86a1`) e exis
 
 ## Limitações conhecidas
 
-- No uso real, o n8n roda em um computador pessoal atrás de um túnel temporário. Quando a máquina reinicia, o bot para.
+- O n8n roda em uma única VM da camada gratuita da Oracle (1 GB de RAM), com endereço fixo e HTTPS. Não há redundância, e a Oracle pode recolher instâncias gratuitas que ficam ociosas.
 - Não há limite de envio por usuário.
 - O segredo do bot é único para todos os usuários. Se vazar, permite lançar despesas em chats conectados, mas não ler nem apagar dados, e é trocado com um comando.
 - A categoria é um palpite por palavra-chave, corrigível no app.
